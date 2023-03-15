@@ -39,10 +39,17 @@ async def query(
     ).choices
 
 
-@app.get("/oeh-topics/description", response_class=PlainTextResponse)
-async def oehTopicsDescription() -> str:
+@app.get("/oeh-topics/description",
+         response_class=PlainTextResponse,
+         description="Get a csv response with all topics and generated descriptions"
+         )
+async def oehTopicsDescription(
+        topic: str = Query(
+            description="Name of the primary topic to resolve, e.g. Physik"
+        ),
+) -> str:
     openai.api_key = os.getenv("OPENAI_API_KEY")
-    return toCSV(resolveTree(valuespaces.data['oeh-topics'], [], 'Deutsch'))
+    return toCSV(resolveTree(valuespaces.data['oeh-topics'], [], topic))
 
 def toCSV(data):
     output = io.StringIO()
@@ -67,22 +74,27 @@ def resolveTree(
     for leave in tree:
         if condition and leave['prefLabel']['de'] != condition:
             continue
-        query = "Beschreibe folgendes Lehrplanthema: \"" + leave['prefLabel']['de']
+        query = "Beschreibe folgendes Lehrplanthema spannend in 3 Sätzen: \"" + leave['prefLabel']['de']
 
         if 'description' in leave and 'de' in leave['description']:
             query += " (" + leave['description']['de'] + ")"
         if len(parent):
             query += " (" + ' - '.join(map(lambda x: x['prefLabel']['de'], parent)) + ")"
         query += "\""
-        result.append({
-            "query": query,
-            "description": openAI.getFromAPI(query)['choices'][0]['message']['content'],
-            "skos": {
-                "id": leave['id'],
-                "prefLabel": leave['prefLabel']
-            }
-        })
-        print(result)
+
+        try:
+            result.append({
+                "query": query,
+                "description": openAI.getFromAPI(query)['choices'][0]['message']['content'],
+                "skos": {
+                    "id": leave['id'],
+                    "prefLabel": leave['prefLabel']
+                }
+            })
+            print(result)
+        except Exception as e:
+            print(e)
+            # return result
         if 'narrower' in leave:
             sub_parent = parent.copy()
             sub_parent.append(leave)
