@@ -43,7 +43,7 @@ async def query(
          response_class=PlainTextResponse,
          description="Get a csv response with all topics and generated descriptions"
          )
-async def oehTopicsDescription(
+async def oeh_topics_description(
         topic: str = Query(
             description="Name of the primary topic to resolve, e.g. Physik"
         ),
