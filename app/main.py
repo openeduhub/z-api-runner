@@ -1,25 +1,33 @@
 import csv
 import io
-from typing import Union, List
+import os
+from typing import List
 
-from fastapi.params import Query
-from pydantic import Field
-from fastapi.responses import PlainTextResponse
-
-from app.OpenAi import OpenAI
-from valuespace_converter.app.valuespaces import Valuespaces
+import openai
 import uvicorn
 from fastapi import FastAPI
-import os
-import openai
+from fastapi.params import Query
+from fastapi.responses import PlainTextResponse
+
+from OpenAi import OpenAI
+from app.EduSharingCollectionRunner import EduSharingCollectionRunner
+from valuespace_converter.app.valuespaces import Valuespaces
 
 app = FastAPI(
     title="ChatGPT/OpenAI API Wrapper",
     version="0.0.1",
 )
+
 valuespaces = Valuespaces()
 openAI = OpenAI()
+edu_sharing_collection_runner = EduSharingCollectionRunner()
 
+
+def doSomething():
+    pass
+
+
+edu_sharing_collection_runner.run_over_collection_tree(lambda x: doSomething())
 
 @app.get("/")
 async def query(

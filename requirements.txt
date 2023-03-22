@@ -1,4 +1,7 @@
-fastapi==0.89.1
-uvicorn==0.20
+certifi >= 14.05.14
+fastapi==0.95.0
 openai==0.27.2
-pydantic==1.10.4
+six >= 1.10
+python_dateutil >= 2.5.3
+setuptools >= 21.0.0
+urllib3 >= 1.15.1
