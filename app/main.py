@@ -1,33 +1,65 @@
-import csv
-import io
-import os
 from typing import List
 
-import openai
 import uvicorn
 from fastapi import FastAPI
+from fastapi.logger import logger
 from fastapi.params import Query
 from fastapi.responses import PlainTextResponse
 
-from OpenAi import OpenAI
-from app.EduSharingCollectionRunner import EduSharingCollectionRunner
-from valuespace_converter.app.valuespaces import Valuespaces
+from app.EduSharingApiHelper import EduSharingApiHelper
+from app.OpenAi import OpenAi
 
 app = FastAPI(
     title="ChatGPT/OpenAI API Wrapper",
     version="0.0.1",
 )
 
-valuespaces = Valuespaces()
-openAI = OpenAI()
-edu_sharing_collection_runner = EduSharingCollectionRunner()
+open_ai = OpenAi()
+edu_sharing_api = EduSharingApiHelper()
 
 
-def doSomething():
-    pass
+def fill_description(x, prompt: str, property: str):
+    if property in x['collection'].properties:
+        if len(list(filter(None, x['collection'].properties[property]))) > 0:
+            logger.info('Skip: ' + x['collection'].title)
+            return
+    path = ' - '.join(list(map(lambda x: x.title, x['path'])))
+    title = x['collection'].title
+    if path:
+        title = path + ' - ' + title
 
+    prompt = prompt % {
+        'title': title
+    }
+    try:
+        logger.info('Process: ' + x['collection'].title)
+        description = open_ai.get_from_api(query=prompt)['choices'][0]['message']['content']
+        if description:
+            properties = x['collection'].properties
+            keywords = []
+            if 'cclom:general_keyword' in properties:
+                keywords = properties['cclom:general_keyword']
+                # filter empty strings
+                keywords = list(filter(None, keywords))
+            keywords.append("ChatGPT: Beschreibung")
+            edu_sharing_api.edu_sharing_node_api.set_property(
+                repository='-home-',
+                node=x['collection'].ref.id,
+                _property='cclom:general_keyword',
+                value=keywords,
+                keep_modified_date=True
+            )
+            edu_sharing_api.edu_sharing_node_api.set_property(
+                repository='-home-',
+                node=x['collection'].ref.id,
+                _property=property,
+                value=[description.strip()],
+                keep_modified_date=True
+            )
 
-edu_sharing_collection_runner.run_over_collection_tree(lambda x: doSomething())
+    except Exception as e:
+        logging.warning(e)
+
 
 @app.get("/")
 async def query(
@@ -40,7 +72,7 @@ async def query(
         )
 
 ) -> List[dict]:
-    return openAI.getFromAPI(
+    return open_ai.get_from_api(
         query=query,
         temperature=0.5,
         n=results
@@ -52,64 +84,17 @@ async def query(
          description="Get a csv response with all topics and generated descriptions"
          )
 async def oeh_topics_description(
-        topic: str = Query(
-            description="Name of the primary topic to resolve, e.g. Physik"
+        prompt: str = Query(
+            description="Prompt which is sent to OpenAI"
         ),
 ) -> str:
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    return toCSV(resolveTree(valuespaces.data['oeh-topics'], [], topic))
-
-def toCSV(data):
-    output = io.StringIO()
-    writer = csv.writer(output, delimiter=';',
-                        quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    writer.writerow(['SKOS ID', 'Node ID', 'Caption', 'Description ChatGPT', 'Query Prompt'])
-    for d in data:
-        writer.writerow([
-            d['skos']['id'],
-            d['skos']['id'].split('/')[-1],
-            d['skos']['prefLabel']['de'],
-            d['description'],
-            d['query']
-        ])
-    return output.getvalue()
-def resolveTree(
-        tree,
-        parent=[],
-        condition=None
-):
-    result = []
-    for leave in tree:
-        if condition and leave['prefLabel']['de'] != condition:
-            continue
-        query = "Beschreibe folgendes Lehrplanthema spannend in 3 Sätzen: \"" + leave['prefLabel']['de']
-
-        if 'description' in leave and 'de' in leave['description']:
-            query += " (" + leave['description']['de'] + ")"
-        if len(parent):
-            query += " (" + ' - '.join(map(lambda x: x['prefLabel']['de'], parent)) + ")"
-        query += "\""
-
-        try:
-            result.append({
-                "query": query,
-                "description": openAI.getFromAPI(query)['choices'][0]['message']['content'],
-                "skos": {
-                    "id": leave['id'],
-                    "prefLabel": leave['prefLabel']
-                }
-            })
-            print(result)
-        except Exception as e:
-            print(e)
-            # return result
-        if 'narrower' in leave:
-            sub_parent = parent.copy()
-            sub_parent.append(leave)
-            result.extend(resolveTree(leave['narrower'], sub_parent))
-
-    return result
-
+    edu_sharing_api.run_over_collection_tree(
+        lambda x: fill_description(
+            x,
+           'Beschreibe folgendes Lehrplanthema spannend in 3 Sätzen: %(title)s',
+           'cm:description')
+    )
 
 if __name__ == "__main__":
+    logger.info("Main")
     uvicorn.run(app, host="0.0.0.0", port=8000)
