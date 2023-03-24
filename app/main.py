@@ -97,6 +97,7 @@ async def oeh_topics_description(
            'Beschreibe folgendes Lehrplanthema spannend in 3 Sätzen: %(title)s',
            'cm:description')
     )
+    return ''
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
