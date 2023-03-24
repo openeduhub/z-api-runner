@@ -1,13 +1,16 @@
 from typing import List
 
 import uvicorn
+import logging
 from fastapi import FastAPI
-from fastapi.logger import logger
 from fastapi.params import Query
 from fastapi.responses import PlainTextResponse
 
 from app.EduSharingApiHelper import EduSharingApiHelper
 from app.OpenAi import OpenAi
+
+logging.root.setLevel(logging.INFO)
+logging.info("Startup")
 
 app = FastAPI(
     title="ChatGPT/OpenAI API Wrapper",
@@ -21,7 +24,7 @@ edu_sharing_api = EduSharingApiHelper()
 def fill_description(x, prompt: str, property: str):
     if property in x['collection'].properties:
         if len(list(filter(None, x['collection'].properties[property]))) > 0:
-            logger.info('Skip: ' + x['collection'].title)
+            logging.info('Skip: ' + x['collection'].title)
             return
     path = ' - '.join(list(map(lambda x: x.title, x['path'])))
     title = x['collection'].title
@@ -32,7 +35,7 @@ def fill_description(x, prompt: str, property: str):
         'title': title
     }
     try:
-        logger.info('Process: ' + x['collection'].title)
+        logging.info('Process: ' + x['collection'].title)
         description = open_ai.get_from_api(query=prompt)['choices'][0]['message']['content']
         if description:
             properties = x['collection'].properties
@@ -96,5 +99,4 @@ async def oeh_topics_description(
     )
 
 if __name__ == "__main__":
-    logger.info("Main")
     uvicorn.run(app, host="0.0.0.0", port=8000)
