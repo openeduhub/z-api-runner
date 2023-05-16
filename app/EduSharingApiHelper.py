@@ -1,11 +1,12 @@
 import base64
 import os
 
-from app import openapi_client
-from app.openapi_client.api.collection_v1_api import COLLECTIONV1Api
-from app.openapi_client.api.node_v1_api import NODEV1Api
-from app.openapi_client.api_client import ApiClient
-from app.openapi_client.configuration import Configuration
+from app import edu_sharing_api
+from app.edu_sharing_api.api.collection_v1_api import COLLECTIONV1Api
+from app.edu_sharing_api.api.node_v1_api import NODEV1Api
+from app.edu_sharing_api.api.search_v1_api import SEARCHV1Api
+from app.edu_sharing_api.api_client import ApiClient
+from app.edu_sharing_api.configuration import Configuration
 
 
 class EduSharingApiHelper:
@@ -13,21 +14,40 @@ class EduSharingApiHelper:
     edu_sharing_api: ApiClient
     edu_sharing_collection_api: COLLECTIONV1Api
     edu_sharing_node_api: NODEV1Api
+    edu_sharing_search_api: SEARCHV1Api
     def __init__(self):
         passwd = os.getenv("EDU_SHARING_PASSWORD")
         configuration = Configuration.get_default_copy()
-        configuration.host = 'https://repository.staging.openeduhub.net/edu-sharing/rest'
+        configuration.host = 'https://repository.pre-staging.openeduhub.net/edu-sharing/rest'
         # doesn't work!
         configuration.username = 'admin'
         configuration.password = passwd
-        self.edu_sharing_api = openapi_client.ApiClient(
+        self.edu_sharing_api = edu_sharing_api.ApiClient(
             configuration=configuration,
             header_name='Authorization',
             header_value='Basic %s' % base64.b64encode(('admin:' + passwd).encode()).decode(),
         )
 
-        self.edu_sharing_collection_api = openapi_client.COLLECTIONV1Api(self.edu_sharing_api)
-        self.edu_sharing_node_api = openapi_client.NODEV1Api(self.edu_sharing_api)
+        self.edu_sharing_collection_api = edu_sharing_api.COLLECTIONV1Api(self.edu_sharing_api)
+        self.edu_sharing_node_api = edu_sharing_api.NODEV1Api(self.edu_sharing_api)
+        self.edu_sharing_search_api = edu_sharing_api.SEARCHV1Api(self.edu_sharing_api)
+
+    def run_over_materials(self, execute_callback):
+        self.run_over_materials_internal(0, execute_callback)
+
+    def run_over_materials_internal(self, offset: int, execute_callback):
+        materials = self.edu_sharing_search_api.search(
+            repository='-home-',
+            query='ngsearch',
+            metadataset='mds_oeh',
+            search_parameters={'criteria': []},
+            skip_count=offset,
+            property_filter=['-all-'],
+            max_items=100,
+        )
+        for node in materials.nodes:
+            execute_callback({'node': node})
+        self.run_over_materials_internal(offset + 100, execute_callback)
 
     def run_over_collection_tree(self, execute_callback):
         self.run_over_collection_tree_internal(self.START_ID, execute_callback)

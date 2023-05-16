@@ -1,3 +1,6 @@
 .env
 app/map.py
 app/openapi_client/
+app/z_api/
+app/edu_sharing_api/
+

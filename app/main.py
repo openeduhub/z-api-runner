@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import uvicorn
@@ -6,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.params import Query
 from fastapi.responses import PlainTextResponse
 
+import z_api
 from app.EduSharingApiHelper import EduSharingApiHelper
 from app.OpenAi import OpenAi
 
@@ -16,12 +18,29 @@ app = FastAPI(
     title="ChatGPT/OpenAI API Wrapper",
     version="0.0.1",
 )
+z_api_config = z_api.Configuration.get_default_copy()
+z_api_config.api_key = {'ai-prompt-token': os.getenv("Z_API_KEY")}
+z_api_client = z_api.ApiClient(configuration=z_api_config)
+z_api_text = z_api.TextPromptControllerApi(z_api_client)
+logging.info(z_api_text.prompt(query="Hallo Welt"))
 
 open_ai = OpenAi()
 edu_sharing_api = EduSharingApiHelper()
 
+def fill_graphql(x, prompt: str, property: str):
+    p = x['node'].properties
+    text = ' '.join(p['cclom:title'] if 'cclom:title' in p else '' + p['cclom:general_description'] if 'cclom:general_description' in p else '').strip()
+    logging.info(x['node'].ref.id)
+    if text:
+        prompt = prompt % {
+            'text': text
+        }
+        logging.info('Test: ' + prompt)
+        data = z_api_text.prompt(query=prompt).responses[0].strip()
+        logging.info(data)
+        # TODO add graphql request
 
-def fill_description(x, prompt: str, property: str):
+def fill_property(x, prompt: str, property: str):
     if property in x['collection'].properties:
         if len(list(filter(None, x['collection'].properties[property]))) > 0:
             logging.info('Skip: ' + x['collection'].title)
@@ -36,7 +55,7 @@ def fill_description(x, prompt: str, property: str):
     }
     try:
         logging.info('Process: ' + x['collection'].title)
-        description = open_ai.get_from_api(query=prompt)['choices'][0]['message']['content']
+        description = z_api_text.prompt(query=prompt)
         if description:
             properties = x['collection'].properties
             keywords = []
@@ -64,23 +83,19 @@ def fill_description(x, prompt: str, property: str):
         logging.warning(e)
 
 
-@app.get("/")
-async def query(
-        query: str = Query(
-            description="Question to send to OpenAI"
-        ),
-        results: int = Query(
-            default=1,
-            description="Number of answers to resolve"
-        )
-
-) -> List[dict]:
-    return open_ai.get_from_api(
-        query=query,
-        temperature=0.5,
-        n=results
-    ).choices
-
+@app.get("/materials/discipline",
+         response_class=PlainTextResponse,
+         description="Get a recommended discipline for given topics"
+         )
+async def oeh_materials(
+) -> str:
+    edu_sharing_api.run_over_materials(
+        lambda x: fill_graphql(
+            x,
+            'Für welches Schulfach bzw. Fachgebiet eignet sich folgender Inhalt: %(text)s (nur das Fach ausgeben)',
+            'lom.classification.taxon')
+    )
+    return ''
 
 @app.get("/oeh-topics/description",
          response_class=PlainTextResponse,
@@ -92,7 +107,7 @@ async def oeh_topics_description(
         ),
 ) -> str:
     edu_sharing_api.run_over_collection_tree(
-        lambda x: fill_description(
+        lambda x: fill_property(
             x,
            'Beschreibe folgendes Lehrplanthema spannend in 3 Sätzen: %(title)s',
            'cm:description')
