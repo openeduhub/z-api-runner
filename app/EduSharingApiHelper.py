@@ -18,7 +18,7 @@ class EduSharingApiHelper:
     def __init__(self):
         passwd = os.getenv("EDU_SHARING_PASSWORD")
         configuration = Configuration.get_default_copy()
-        configuration.host = 'https://repository.pre-staging.openeduhub.net/edu-sharing/rest'
+        configuration.host = os.getenv("EDU_SHARING_URL") + '/rest'
         # doesn't work!
         configuration.username = 'admin'
         configuration.password = passwd
@@ -32,10 +32,10 @@ class EduSharingApiHelper:
         self.edu_sharing_node_api = edu_sharing_api.NODEV1Api(self.edu_sharing_api)
         self.edu_sharing_search_api = edu_sharing_api.SEARCHV1Api(self.edu_sharing_api)
 
-    def run_over_materials(self, execute_callback):
-        self.run_over_materials_internal(0, execute_callback)
+    async def run_over_materials(self, execute_callback):
+        await self.run_over_materials_internal(0, execute_callback)
 
-    def run_over_materials_internal(self, offset: int, execute_callback):
+    async def run_over_materials_internal(self, offset: int, execute_callback):
         materials = self.edu_sharing_search_api.search(
             repository='-home-',
             query='ngsearch',
@@ -43,11 +43,11 @@ class EduSharingApiHelper:
             search_parameters={'criteria': []},
             skip_count=offset,
             property_filter=['-all-'],
-            max_items=100,
+            max_items=10,
         )
         for node in materials.nodes:
-            execute_callback({'node': node})
-        self.run_over_materials_internal(offset + 100, execute_callback)
+            await execute_callback({'node': node})
+        await self.run_over_materials_internal(offset + 10, execute_callback)
 
     def run_over_collection_tree(self, execute_callback):
         self.run_over_collection_tree_internal(self.START_ID, execute_callback)

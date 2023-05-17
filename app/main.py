@@ -1,11 +1,13 @@
+import base64
+import logging
 import os
-from typing import List
 
 import uvicorn
-import logging
 from fastapi import FastAPI
 from fastapi.params import Query
 from fastapi.responses import PlainTextResponse
+from gql import Client, gql
+from gql.transport.aiohttp import AIOHTTPTransport
 
 import z_api
 from app.EduSharingApiHelper import EduSharingApiHelper
@@ -14,6 +16,13 @@ from app.OpenAi import OpenAi
 logging.root.setLevel(logging.INFO)
 logging.info("Startup")
 
+transport = AIOHTTPTransport(
+    url=os.getenv("EDU_SHARING_URL") + '/graphql',
+    headers={
+        'Authorization': 'Basic ' + base64.b64encode(('admin:' + os.getenv("EDU_SHARING_PASSWORD")).encode('utf-8')).decode('utf-8')
+    }
+)
+graphqlClient = Client(transport=transport, fetch_schema_from_transport=True)
 app = FastAPI(
     title="ChatGPT/OpenAI API Wrapper",
     version="0.0.1",
@@ -27,7 +36,7 @@ logging.info(z_api_text.prompt(query="Hallo Welt"))
 open_ai = OpenAi()
 edu_sharing_api = EduSharingApiHelper()
 
-def fill_graphql(x, prompt: str, property: str):
+async def fill_graphql(x, prompt: str, property: str):
     p = x['node'].properties
     text = ' '.join(p['cclom:title'] if 'cclom:title' in p else '' + p['cclom:general_description'] if 'cclom:general_description' in p else '').strip()
     logging.info(x['node'].ref.id)
@@ -39,7 +48,32 @@ def fill_graphql(x, prompt: str, property: str):
         data = z_api_text.prompt(query=prompt).responses[0].strip()
         logging.info(data)
         # TODO add graphql request
-
+        request = gql("""
+        mutation addOrUpdateSuggestion($suggestion: SuggestionInput!) {
+            addOrUpdateSuggestion(suggestion: $suggestion) 
+        }
+        """)
+        await graphqlClient.execute_async(request, variable_values={
+            "suggestion": {
+                "nodeId": x['node'].ref.id,
+                "id": "test",
+                "type": "AI",
+                "lom": {
+                    "classification": {
+                        "taxon": {
+                            "value": {
+                                "id": data,
+                                "value": data
+                            },
+                            "version": "1.0",
+                            "info": {
+                                "status":"PENDING"
+                            }
+                        }
+                    }
+                }
+            }
+        })
 def fill_property(x, prompt: str, property: str):
     if property in x['collection'].properties:
         if len(list(filter(None, x['collection'].properties[property]))) > 0:
@@ -89,7 +123,7 @@ def fill_property(x, prompt: str, property: str):
          )
 async def oeh_materials(
 ) -> str:
-    edu_sharing_api.run_over_materials(
+    await edu_sharing_api.run_over_materials(
         lambda x: fill_graphql(
             x,
             'Für welches Schulfach bzw. Fachgebiet eignet sich folgender Inhalt: %(text)s (nur das Fach ausgeben)',
@@ -109,8 +143,8 @@ async def oeh_topics_description(
     edu_sharing_api.run_over_collection_tree(
         lambda x: fill_property(
             x,
-           'Beschreibe folgendes Lehrplanthema spannend in 3 Sätzen: %(title)s',
-           'cm:description')
+            'Beschreibe folgendes Lehrplanthema spannend in 3 Sätzen: %(title)s',
+            'cm:description')
     )
     return ''
 
