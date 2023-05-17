@@ -20,7 +20,8 @@ logging.info("Startup")
 transport = AIOHTTPTransport(
     url=os.getenv("EDU_SHARING_URL") + '/graphql',
     headers={
-        'Authorization': 'Basic ' + base64.b64encode(('admin:' + os.getenv("EDU_SHARING_PASSWORD")).encode('utf-8')).decode('utf-8')
+        'Authorization': 'Basic ' + base64.b64encode(
+            ('admin:' + os.getenv("EDU_SHARING_PASSWORD")).encode('utf-8')).decode('utf-8')
     }
 )
 valuespaces = Valuespaces()
@@ -38,9 +39,11 @@ logging.info(z_api_text.prompt(query="Hallo Welt"))
 open_ai = OpenAi()
 edu_sharing_api = EduSharingApiHelper()
 
+
 async def fill_discipline(x, prompt: str, property: str):
     p = x['node'].properties
-    text = ' '.join(p['cclom:title'] if 'cclom:title' in p else '' + p['cclom:general_description'] if 'cclom:general_description' in p else '').strip()
+    text = ' '.join(p['cclom:title'] if 'cclom:title' in p else '' + p[
+        'cclom:general_description'] if 'cclom:general_description' in p else '').strip()
     logging.info(x['node'].ref.id)
     if text:
         prompt = prompt % {
@@ -71,13 +74,15 @@ async def fill_discipline(x, prompt: str, property: str):
                                 },
                                 "version": "1.0",
                                 "info": {
-                                    "status":"PENDING"
+                                    "status": "PENDING"
                                 }
                             }
                         }
                     }
                 }
             })
+
+
 def fill_property(x, prompt: str, property: str):
     if property in x['collection'].properties:
         if len(list(filter(None, x['collection'].properties[property]))) > 0:
@@ -135,6 +140,7 @@ async def oeh_materials(
     )
     return ''
 
+
 @app.get("/oeh-topics/description",
          response_class=PlainTextResponse,
          description="Get a csv response with all topics and generated descriptions"
@@ -151,6 +157,7 @@ async def oeh_topics_description(
             'cm:description')
     )
     return ''
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
