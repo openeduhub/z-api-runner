@@ -12,6 +12,7 @@ from gql.transport.aiohttp import AIOHTTPTransport
 import z_api
 from app.EduSharingApiHelper import EduSharingApiHelper
 from app.OpenAi import OpenAi
+from app.valuespace_converter.app.valuespaces import Valuespaces
 
 logging.root.setLevel(logging.INFO)
 logging.info("Startup")
@@ -22,6 +23,7 @@ transport = AIOHTTPTransport(
         'Authorization': 'Basic ' + base64.b64encode(('admin:' + os.getenv("EDU_SHARING_PASSWORD")).encode('utf-8')).decode('utf-8')
     }
 )
+valuespaces = Valuespaces()
 graphqlClient = Client(transport=transport, fetch_schema_from_transport=True)
 app = FastAPI(
     title="ChatGPT/OpenAI API Wrapper",
@@ -36,7 +38,7 @@ logging.info(z_api_text.prompt(query="Hallo Welt"))
 open_ai = OpenAi()
 edu_sharing_api = EduSharingApiHelper()
 
-async def fill_graphql(x, prompt: str, property: str):
+async def fill_discipline(x, prompt: str, property: str):
     p = x['node'].properties
     text = ' '.join(p['cclom:title'] if 'cclom:title' in p else '' + p['cclom:general_description'] if 'cclom:general_description' in p else '').strip()
     logging.info(x['node'].ref.id)
@@ -44,36 +46,38 @@ async def fill_graphql(x, prompt: str, property: str):
         prompt = prompt % {
             'text': text
         }
-        logging.info('Test: ' + prompt)
+        logging.info('Prompt: ' + prompt)
         data = z_api_text.prompt(query=prompt).responses[0].strip()
+        key = valuespaces.findKeyByLabel('discipline', data)
         logging.info(data)
-        # TODO add graphql request
-        request = gql("""
-        mutation addOrUpdateSuggestion($suggestion: SuggestionInput!) {
-            addOrUpdateSuggestion(suggestion: $suggestion) 
-        }
-        """)
-        await graphqlClient.execute_async(request, variable_values={
-            "suggestion": {
-                "nodeId": x['node'].ref.id,
-                "id": "test",
-                "type": "AI",
-                "lom": {
-                    "classification": {
-                        "taxon": {
-                            "value": {
-                                "id": data,
-                                "value": data
-                            },
-                            "version": "1.0",
-                            "info": {
-                                "status":"PENDING"
+        logging.info(key)
+        if key:
+            request = gql("""
+            mutation addOrUpdateSuggestion($suggestion: SuggestionInput!) {
+                addOrUpdateSuggestion(suggestion: $suggestion) 
+            }
+            """)
+            await graphqlClient.execute_async(request, variable_values={
+                "suggestion": {
+                    "nodeId": x['node'].ref.id,
+                    "id": "Z-API",
+                    "type": "AI",
+                    "lom": {
+                        "classification": {
+                            "taxon": {
+                                "value": {
+                                    "id": key['id'],
+                                    "value": key['id']
+                                },
+                                "version": "1.0",
+                                "info": {
+                                    "status":"PENDING"
+                                }
                             }
                         }
                     }
                 }
-            }
-        })
+            })
 def fill_property(x, prompt: str, property: str):
     if property in x['collection'].properties:
         if len(list(filter(None, x['collection'].properties[property]))) > 0:
@@ -124,7 +128,7 @@ def fill_property(x, prompt: str, property: str):
 async def oeh_materials(
 ) -> str:
     await edu_sharing_api.run_over_materials(
-        lambda x: fill_graphql(
+        lambda x: fill_discipline(
             x,
             'Für welches Schulfach bzw. Fachgebiet eignet sich folgender Inhalt: %(text)s (nur das Fach ausgeben)',
             'lom.classification.taxon')
