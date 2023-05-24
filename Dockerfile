@@ -6,5 +6,7 @@ COPY ./openapi.json /code/openapi.json
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 COPY ./app /code/app
 COPY ./generate-api.sh /code/generate-api.sh
+COPY ./generate-z-api.sh /code/generate-z-api.sh
 RUN sh /code/generate-api.sh
+RUN sh /code/generate-z-api.sh
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
