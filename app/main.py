@@ -34,7 +34,7 @@ z_api_config = z_api.Configuration.get_default_copy()
 z_api_config.api_key = {'ai-prompt-token': os.getenv("Z_API_KEY")}
 z_api_client = z_api.ApiClient(configuration=z_api_config)
 z_api_text = z_api.TextPromptControllerApi(z_api_client)
-logging.info(z_api_text.prompt(query="Hallo Welt"))
+logging.info(z_api_text.prompt(body="Hallo Welt"))
 
 open_ai = OpenAi()
 edu_sharing_api = EduSharingApiHelper()
@@ -42,19 +42,33 @@ edu_sharing_api = EduSharingApiHelper()
 
 async def fill_discipline(x, prompt: str, property: str):
     p = x['node'].properties
-    text = ' '.join(p['cclom:title'] if 'cclom:title' in p else '' + p[
-        'cclom:general_description'] if 'cclom:general_description' in p else '').strip()
+    text = ' '.join(
+        (p['cclom:title'] if 'cclom:title' in p else '') +
+        (p['cclom:general_description'] if 'cclom:general_description' in p else '')
+    ).strip()
     logging.info(x['node'].ref.id)
     if text:
         prompt = prompt % {
             'text': text
         }
         logging.info('Prompt: ' + prompt)
-        data = z_api_text.prompt(query=prompt).responses[0].strip()
-        key = valuespaces.findKeyByLabel('discipline', data)
+        data = z_api_text.prompt(body=prompt).responses[0].strip()
+        key = valuespaces.findInText('discipline', data)
         logging.info(data)
         logging.info(key)
         if key:
+            taxon = []
+            for k in key:
+                taxon.append({
+                    "value": {
+                        "id": k['id'],
+                        "value": k['prefLabel']['de']
+                    },
+                    "version": "1.0",
+                    "info": {
+                        "status": "PENDING"
+                    }
+                })
             request = gql("""
             mutation addOrUpdateSuggestion($suggestion: SuggestionInput!) {
                 addOrUpdateSuggestion(suggestion: $suggestion) 
@@ -67,16 +81,7 @@ async def fill_discipline(x, prompt: str, property: str):
                     "type": "AI",
                     "lom": {
                         "classification": {
-                            "taxon": {
-                                "value": {
-                                    "id": key['id'],
-                                    "value": key['id']
-                                },
-                                "version": "1.0",
-                                "info": {
-                                    "status": "PENDING"
-                                }
-                            }
+                            "taxon": taxon
                         }
                     }
                 }
@@ -98,7 +103,7 @@ def fill_property(x, prompt: str, property: str):
     }
     try:
         logging.info('Process: ' + x['collection'].title)
-        description = z_api_text.prompt(query=prompt)
+        description = z_api_text.prompt(body=prompt)
         if description:
             properties = x['collection'].properties
             keywords = []
@@ -135,7 +140,7 @@ async def oeh_materials(
     await edu_sharing_api.run_over_materials(
         lambda x: fill_discipline(
             x,
-            'Für welches Schulfach bzw. Fachgebiet eignet sich folgender Inhalt: %(text)s (nur das Fach ausgeben)',
+            'Für welche Schulfächer bzw. Fachgebiete eignet sich folgender Inhalt (Nur die Fächer benennen): %(text)s',
             'lom.classification.taxon')
     )
     return ''
