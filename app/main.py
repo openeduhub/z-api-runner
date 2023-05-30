@@ -74,17 +74,20 @@ async def fill_discipline(x, prompt: str, property: str):
                 addOrUpdateSuggestion(suggestion: $suggestion) 
             }
             """)
-            await graphqlClient.execute_async(request, variable_values={
-                "suggestion": {
-                    "nodeId": x['node'].ref.id,
-                    "id": "Z-API",
-                    "type": "AI",
-                    "lom": {
-                        "classification": {
-                            "taxon": taxon
-                        }
+            suggestion = {
+                "nodeId": x['node'].ref.id,
+                "id": "Z-API",
+                "type": "AI",
+                "lom": {
+                    "classification": {
+                        "taxon": taxon
                     }
-                }
+                },
+                "oeh": {}
+            }
+            logging.info(suggestion)
+            await graphqlClient.execute_async(request, variable_values={
+                "suggestion": suggestion
             })
 
 
