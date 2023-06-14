@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime
 import logging
 import os
 
@@ -12,6 +13,8 @@ from gql.transport.aiohttp import AIOHTTPTransport
 import z_api
 from app.EduSharingApiHelper import EduSharingApiHelper
 from app.OpenAi import OpenAi
+from app.PromptRunner import PromptRunner
+from app.RunMode import RunMode
 from app.valuespace_converter.app.valuespaces import Valuespaces
 
 logging.root.setLevel(logging.INFO)
@@ -33,8 +36,8 @@ app = FastAPI(
 z_api_config = z_api.Configuration.get_default_copy()
 z_api_config.api_key = {'ai-prompt-token': os.getenv("Z_API_KEY")}
 z_api_client = z_api.ApiClient(configuration=z_api_config)
-z_api_text = z_api.TextPromptControllerApi(z_api_client)
-logging.info(z_api_text.prompt(body="Hallo Welt"))
+z_api_text = z_api.AITextPromptsApi(z_api_client)
+# logging.info(z_api_text.prompt(body="Hallo Welt"))
 
 open_ai = OpenAi()
 edu_sharing_api = EduSharingApiHelper()
@@ -133,6 +136,23 @@ def fill_property(x, prompt: str, property: str):
     except Exception as e:
         logging.warning(e)
 
+
+@app.get("/run_prompt",
+         response_class=PlainTextResponse,
+         description="Definierten Prompt über alle Materialien oder Sammlungen ausführen"
+         )
+async def run_prompt(
+    prompt: str,
+    mode: RunMode,
+) -> str:
+
+    result = edu_sharing_api.edu_sharing_node_api.create_child("-home-", "-inbox-", "ccm:io", {
+        "cm:name": [prompt + " " + datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + ".csv"]
+    }).node
+
+    PromptRunner(z_api_text, prompt, mode, result).run()
+
+    return os.getenv("EDU_SHARING_URL") + "/components/workspace?id=" + result.parent.id + "&file=" + result.ref.id
 
 @app.get("/materials/discipline",
          response_class=PlainTextResponse,

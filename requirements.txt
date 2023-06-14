@@ -1,5 +1,5 @@
 certifi >= 14.05.14
-fastapi==0.95.0
+fastapi==0.97.0
 openai==0.27.2
 six >= 1.10
 python_dateutil >= 2.5.3
