@@ -43,11 +43,11 @@ class EduSharingApiHelper:
             search_parameters={'criteria': []},
             skip_count=offset,
             property_filter=['-all-'],
-            max_items=10,
+            max_items=100,
         )
         for node in materials.nodes:
             await execute_callback({'node': node})
-        await self.run_over_materials_internal(offset + 10, execute_callback)
+        await self.run_over_materials_internal(offset + 100, execute_callback)
 
     def run_over_collection_tree(self, execute_callback):
         self.run_over_collection_tree_internal(self.START_ID, execute_callback)

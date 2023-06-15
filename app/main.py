@@ -1,7 +1,10 @@
 import base64
+import threading
 from datetime import datetime
 import logging
 import os
+from threading import Thread
+from typing import List
 
 import uvicorn
 from fastapi import FastAPI
@@ -9,6 +12,7 @@ from fastapi.params import Query
 from fastapi.responses import PlainTextResponse
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
+from starlette.responses import JSONResponse
 
 import z_api
 from app.EduSharingApiHelper import EduSharingApiHelper
@@ -136,10 +140,36 @@ def fill_property(x, prompt: str, property: str):
     except Exception as e:
         logging.warning(e)
 
+@app.delete("/run_prompt/stop",
+         response_class=PlainTextResponse,
+         description="""
+         Laufenden Prompt abbrechen/beenden
+         """
+         )
+async def stop_prompt(
+        prompt_id: str
+) -> None:
+    thread = list((filter(lambda x: x.name == prompt_id, threading.enumerate())))[0]
+    thread.stop()
+
+@app.get("/run_prompt/running",
+         response_class=PlainTextResponse,
+         description="""
+         Aktuell laufende Prompts prüfen
+         """
+         )
+async def running_prompts(
+) -> JSONResponse:
+    return JSONResponse(content=list((filter(lambda x: x.startswith('https://'), map(lambda x: x.name, threading.enumerate())))))
 
 @app.get("/run_prompt",
          response_class=PlainTextResponse,
-         description="Definierten Prompt über alle Materialien oder Sammlungen ausführen"
+         description="""Definierten Prompt über alle Materialien oder Sammlungen ausführen. 
+         Folgende Platzhaler sind verwendbar:
+         %(title)s => Titel des Mediums/Sammlung
+         %(description)s => Beschreibung des Mediums/Sammlung
+         %(path)s => Vollständiger Sammlungspfad inkl. der Sammlung selbst (nur Sammlungen)
+         """
          )
 async def run_prompt(
     prompt: str,
@@ -150,9 +180,10 @@ async def run_prompt(
         "cm:name": [prompt + " " + datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + ".csv"]
     }).node
 
-    PromptRunner(z_api_text, prompt, mode, result).run()
-
-    return os.getenv("EDU_SHARING_URL") + "/components/workspace?id=" + result.parent.id + "&file=" + result.ref.id
+    run = PromptRunner(z_api_text, prompt, mode, result)
+    run.name = os.getenv("EDU_SHARING_URL") + "/components/workspace?id=" + result.parent.id + "&file=" + result.ref.id
+    run.start()
+    return run.name
 
 @app.get("/materials/discipline",
          response_class=PlainTextResponse,
