@@ -52,7 +52,7 @@ class PromptRunner (threading.Thread):
             )
         self.write_csv()
 
-    def store_info(self, data):
+    async def store_info(self, data):
         if self.is_stopped:
             return
         node: Node

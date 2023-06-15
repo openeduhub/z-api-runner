@@ -61,7 +61,7 @@ class EduSharingApiHelper:
             fetch_counts=False
         )
         for collection in collections.collections:
-            execute_callback({'collection': collection, 'path': parent})
+            await execute_callback({'collection': collection, 'path': parent})
             parent_copy = parent.copy()
             parent_copy.append(collection)
             self.run_over_collection_tree_internal(collection.ref.id, execute_callback, parent_copy)
