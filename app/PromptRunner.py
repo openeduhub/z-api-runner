@@ -105,8 +105,10 @@ class PromptRunner (threading.Thread):
         writer.writerow(['ID', 'Titel', 'KI-Antwort', 'Gesendeter Prompt'])
         writer.writerows(self.accumulator)
         csv_data = output.getvalue()
+        result = requests.post(os.getenv('EDU_SHARING_URL') + '/rest/node/v1/nodes/' + self.node.ref.repo + '/' + self.node.ref.id + '/content?mimetype=text/csv', files={
+            'file': ('dummy.csv', csv_data)
+        }, auth=HTTPBasicAuth('admin', os.getenv('EDU_SHARING_PASSWORD'))).json()
         output.close()
-        requests.post(os.getenv('EDU_SHARING_URL') + '/rest/node/v1/nodes/' + self.node.ref.repo + '/' + self.node.ref.id + '/textContent?', data=csv_data, auth=HTTPBasicAuth('admin', os.getenv('EDU_SHARING_PASSWORD'))).json()
         # self.edu_sharing_api.edu_sharing_node_api.change_content1(self.node.ref.repo, self.node.ref.id, 'text/csv',
         #                                                          version_comment = 'Python OpenAI Wrapper',
         #                                                          post_params = {'file': csv_data}
