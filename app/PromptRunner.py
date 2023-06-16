@@ -82,12 +82,13 @@ class PromptRunner (threading.Thread):
             node = data['node']
         try:
             api_result = self.z_api_text.prompt(body = converted_prompt)
+            result = api_result.responses[0].encode('utf-8').decode('unicode_escape')
             self.accumulator.append(self.to_csv_line(node,
                                                      # seems to be a dirty hack because of the openapi generator
-                                                     api_result.responses[0].encode('utf-8').decode('unicode_escape'),
+                                                     result,
                                                      converted_prompt,
                                                      ))
-            logging.info(node.ref.id + ": " + api_result)
+            logging.info(node.ref.id + ": " + result)
             logging.info(len(self.accumulator))
             if len(self.accumulator) % 50 == 1:
                 self.write_csv()
