@@ -87,6 +87,8 @@ class PromptRunner (threading.Thread):
                                                      api_result.responses[0].encode('utf-8').decode('unicode_escape'),
                                                      converted_prompt,
                                                      ))
+            logging.info(node.ref.id + ": " + api_result)
+            logging.info(len(self.accumulator))
             if len(self.accumulator) % 50 == 1:
                 self.write_csv()
         except Exception as e:
