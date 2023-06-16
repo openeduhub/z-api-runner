@@ -21,7 +21,7 @@ class PromptRunner (threading.Thread):
     z_api_text: AITextPromptsApi
     prompt: str
     mode: RunMode
-    accumulator = []
+    accumulator: list
 
     def getName(self) -> str:
         return self.prompt
@@ -34,15 +34,18 @@ class PromptRunner (threading.Thread):
         self.prompt = prompt
         self.mode = mode
         self.node = node
+        self.accumulator = []
         self.edu_sharing_api = EduSharingApiHelper()
         threading.Thread.__init__(self)
 
     def run(self):
         if self.mode == RunMode.COLLECTIONS:
-            self.edu_sharing_api.run_over_collection_tree(lambda x: self.store_info(
-                x
+            asyncio.run(
+                self.edu_sharing_api.run_over_collection_tree(lambda x: self.store_info(
+                    x
+                )
+                                                              )
             )
-                                                          )
         if self.mode == RunMode.MATERIALS:
             asyncio.run(
                 self.edu_sharing_api.run_over_materials(lambda x: self.store_info(
@@ -65,15 +68,16 @@ class PromptRunner (threading.Thread):
             else:
                 path = title
             converted_prompt = self.prompt % {
-                'title': data['collection'].properties['cm:title'],
+                'title': data['collection'].title,
                 'description': data['collection'].properties['cm:description'],
                 'path': path
             }
             node = data['collection']
         else:
+            props = data['node'].properties
             converted_prompt = self.prompt % {
-                'title': data['node'].properties['cclom:title'],
-                'description': data['node'].properties['cclom:general_description'],
+                'title': data['node'].title,
+                'description': props['cclom:general_description'] if 'cclom:general_description' in props else '',
             }
             node = data['node']
         try:

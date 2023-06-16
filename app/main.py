@@ -160,8 +160,11 @@ async def stop_prompt(
          )
 async def running_prompts(
 ) -> JSONResponse:
-    return JSONResponse(content=list((filter(lambda x: x.startswith('https://'), map(lambda x: x.name, threading.enumerate())))))
-
+    return JSONResponse(content=list((map(lambda x: {
+        'url': x.name,
+        'progress': len(x.accumulator)
+    }, filter(lambda x: x.name.startswith('https://'), threading.enumerate())))
+                                     ))
 @app.get("/run_prompt",
          response_class=PlainTextResponse,
          description="""Definierten Prompt über alle Materialien oder Sammlungen ausführen. 
@@ -182,6 +185,7 @@ async def run_prompt(
 
     run = PromptRunner(z_api_text, prompt, mode, result)
     run.name = os.getenv("EDU_SHARING_URL") + "/components/workspace?id=" + result.parent.id + "&file=" + result.ref.id
+    run.accumulator = []
     run.start()
     return run.name
 
