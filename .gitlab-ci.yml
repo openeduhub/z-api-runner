@@ -15,7 +15,7 @@ build-docker:
 
   script:
     - docker login $DOCKER_REGISTRY -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-    - docker build -t $DOCKER_REGISTRY/projects/wlo/edu_sharing-projects-wlo-deploy-docker-chatgpt-api:$([[ $CI_COMMIT_REF_NAME = "main" ]] && echo "main" || echo "dev") .
-    - docker push $DOCKER_REGISTRY/projects/wlo/edu_sharing-projects-wlo-deploy-docker-chatgpt-api:$([[ $CI_COMMIT_REF_NAME = "main" ]] && echo "main" || echo "dev")
+    - docker build -t $DOCKER_REGISTRY/projects/wlo/edu_sharing-projects-wlo-deploy-docker-chatgpt-api:$CI_COMMIT_REF_NAME .
+    - docker push $DOCKER_REGISTRY/projects/wlo/edu_sharing-projects-wlo-deploy-docker-chatgpt-api:$CI_COMMIT_REF_NAME
 
 
