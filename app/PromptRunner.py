@@ -69,7 +69,7 @@ class PromptRunner (threading.Thread):
                 path = title
             converted_prompt = self.prompt % {
                 'title': data['collection'].title,
-                'description': data['collection'].properties['cm:description'],
+                'description': data['collection'].properties['cm:description'] if 'cm:description' in data['collection'].properties else '',
                 'path': path
             }
             node = data['collection']
