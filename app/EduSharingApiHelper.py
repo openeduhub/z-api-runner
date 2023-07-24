@@ -49,8 +49,10 @@ class EduSharingApiHelper:
             await execute_callback({'node': node})
         await self.run_over_materials_internal(offset + 100, execute_callback)
 
-    async def run_over_collection_tree(self, execute_callback):
-        await self.run_over_collection_tree_internal(self.START_ID, execute_callback)
+    async def run_over_collection_tree(self, start_id: str, execute_callback):
+        if  not start_id:
+            start_id = self.START_ID
+        await self.run_over_collection_tree_internal(start_id, execute_callback)
 
     async def run_over_collection_tree_internal(self, collection_id, execute_callback, parent = []):
         collections = self.edu_sharing_collection_api.get_collections_subcollections(

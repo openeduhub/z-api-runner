@@ -177,13 +177,14 @@ async def running_prompts(
 async def run_prompt(
     prompt: str,
     mode: RunMode,
+    start_Id: str = Query(default = None, description="Start Id (nur Sammlungen), wenn nicht gesetzt wird der gesamte Baum verwendet"),
 ) -> str:
 
     result = edu_sharing_api.edu_sharing_node_api.create_child("-home-", "-inbox-", "ccm:io", {
         "cm:name": [prompt + " " + datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + ".csv"]
     }).node
 
-    run = PromptRunner(z_api_text, prompt, mode, result)
+    run = PromptRunner(z_api_text, prompt, mode, start_Id, result)
     run.name = os.getenv("EDU_SHARING_URL") + "/components/workspace?id=" + result.parent.id + "&file=" + result.ref.id
     run.accumulator = []
     run.start()
@@ -223,4 +224,4 @@ async def oeh_topics_description(
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

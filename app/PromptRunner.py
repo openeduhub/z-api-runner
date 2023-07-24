@@ -21,6 +21,7 @@ class PromptRunner (threading.Thread):
     z_api_text: AITextPromptsApi
     prompt: str
     mode: RunMode
+    startId: str
     accumulator: list
 
     def getName(self) -> str:
@@ -28,11 +29,12 @@ class PromptRunner (threading.Thread):
 
     def stop(self):
         self.is_stopped = True
-    def __init__(self, z_api_text: AITextPromptsApi, prompt: str, mode: RunMode, node: Node):
+    def __init__(self, z_api_text: AITextPromptsApi, prompt: str, mode: RunMode, startId: str, node: Node):
         self.is_stopped = False
         self.z_api_text = z_api_text
         self.prompt = prompt
         self.mode = mode
+        self.startId = startId
         self.node = node
         self.accumulator = []
         self.edu_sharing_api = EduSharingApiHelper()
@@ -41,7 +43,7 @@ class PromptRunner (threading.Thread):
     def run(self):
         if self.mode == RunMode.COLLECTIONS:
             asyncio.run(
-                self.edu_sharing_api.run_over_collection_tree(lambda x: self.store_info(
+                self.edu_sharing_api.run_over_collection_tree(self.startId, lambda x: self.store_info(
                     x
                 )
                                                               )
