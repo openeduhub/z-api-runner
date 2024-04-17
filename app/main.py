@@ -47,6 +47,30 @@ open_ai = OpenAi()
 edu_sharing_api = EduSharingApiHelper()
 
 
+# curl -X 'POST' \
+#         'https://ai-prompt-service.staging.openeduhub.net/kidra/bayesian-predictions' \
+#         -H 'accept: application/json' \
+#               -H 'Content-Type: application/json' \
+#                  -d '{
+# "text": "a² + b² = c²",
+# "num_samples": 1000,
+# "num_predictions": 10,
+# "interval_size": 0.8
+# }'
+# {
+#     "predictions": {
+#         "properties.ccm:curriculum": [
+#             {
+#                 "id": "http://w3id.org/openeduhub/vocabs/oeh-topics/858f8170-15a2-4c7a-8cbd-a0f94b02e6cd",
+#                 "name": "Außerschulisches Lernen",
+#                 "mean_prob": 0.35047292709350586,
+#                 "median_prob": 0.3210128843784332,
+#                 "prob_interval": [
+#                     0.05755974352359772,
+#                     0.5337174534797668
+#                 ]
+#             },
+
 async def fill_discipline(x, prompt: str, property: str):
     p = x['node'].properties
     text = ' '.join(
@@ -59,43 +83,46 @@ async def fill_discipline(x, prompt: str, property: str):
             'text': text
         }
         logging.info('Prompt: ' + prompt)
-        data = z_api_text.prompt(body=prompt).responses[0].strip()
-        key = valuespaces.findInText('discipline', data)
-        logging.info(data)
-        logging.info(key)
-        if key:
-            taxon = []
-            for k in key:
-                taxon.append({
-                    "value": {
-                        "id": k['id'],
-                        "value": k['prefLabel']['de']
+        try:
+            data = z_api_text.prompt(body=prompt).responses[0].strip()
+            key = valuespaces.findInText('discipline', data)
+            logging.info(data)
+            logging.info(key)
+            if key:
+                taxon = []
+                for k in key:
+                    taxon.append({
+                        "value": {
+                            "id": k['id'],
+                            "value": k['prefLabel']['de']
+                        },
+                        "version": "1.0",
+                        "info": {
+                            "status": "PENDING"
+                        }
+                    })
+                request = gql("""
+                mutation addOrUpdateSuggestion($suggestion: SuggestionInput!) {
+                    addOrUpdateSuggestion(suggestion: $suggestion) 
+                }
+                """)
+                suggestion = {
+                    "nodeId": x['node'].ref.id,
+                    "id": "Z-API",
+                    "type": "AI",
+                    "lom": {
+                        "classification": {
+                            "taxon": taxon
+                        }
                     },
-                    "version": "1.0",
-                    "info": {
-                        "status": "PENDING"
-                    }
+                    "oeh": {}
+                }
+                logging.info(suggestion)
+                await graphqlClient.execute_async(request, variable_values={
+                    "suggestion": suggestion
                 })
-            request = gql("""
-            mutation addOrUpdateSuggestion($suggestion: SuggestionInput!) {
-                addOrUpdateSuggestion(suggestion: $suggestion) 
-            }
-            """)
-            suggestion = {
-                "nodeId": x['node'].ref.id,
-                "id": "Z-API",
-                "type": "AI",
-                "lom": {
-                    "classification": {
-                        "taxon": taxon
-                    }
-                },
-                "oeh": {}
-            }
-            logging.info(suggestion)
-            await graphqlClient.execute_async(request, variable_values={
-                "suggestion": suggestion
-            })
+        except Exception as e:
+            logging.warning('Z Api failed', e)
 
 
 def fill_property(x, prompt: str, property: str):
