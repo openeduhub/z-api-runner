@@ -1,6 +1,7 @@
 import base64
 import threading
 from datetime import datetime
+import asyncio
 import logging
 import os
 from threading import Thread
@@ -16,6 +17,7 @@ from starlette.responses import JSONResponse
 
 import z_api
 from app.EduSharingApiHelper import EduSharingApiHelper
+from app.KirdaRunner import KidraRunner
 from app.OpenAi import OpenAi
 from app.PromptRunner import PromptRunner
 from app.RunMode import RunMode
@@ -34,13 +36,15 @@ transport = AIOHTTPTransport(
 valuespaces = Valuespaces()
 graphqlClient = Client(transport=transport, fetch_schema_from_transport=True)
 app = FastAPI(
-    title="ChatGPT/OpenAI API Wrapper",
-    version="0.0.1",
+    title="OpenAI/Kidra API Wrapper",
+    version="0.0.2",
 )
 z_api_config = z_api.Configuration.get_default_copy()
 z_api_config.api_key = {'ai-prompt-token': os.getenv("Z_API_KEY")}
+z_api_config.client_side_validation = False
 z_api_client = z_api.ApiClient(configuration=z_api_config)
 z_api_text = z_api.AITextPromptsApi(z_api_client)
+z_api_kidra = z_api.KidraApi(z_api_client)
 # logging.info(z_api_text.prompt(body="Hallo Welt"))
 
 open_ai = OpenAi()
@@ -212,10 +216,23 @@ async def run_prompt(
     }).node
 
     run = PromptRunner(z_api_text, prompt, mode, start_Id, result)
-    run.name = os.getenv("EDU_SHARING_URL") + "/components/workspace?id=" + result.parent.id + "&file=" + result.ref.id
+    run.start()
+    return run.name
+
+@app.get("/run_kidra_suggestions",
+         response_class=PlainTextResponse,
+         description=""" Kidra über alle Nodes Vorschläge generieren lassen
+         """
+         )
+async def run_kidra_suggestions(
+        mode: RunMode,
+        start_Id: str = Query(default = None, description="Start Id (nur Sammlungen), wenn nicht gesetzt wird der gesamte Baum verwendet"),
+) -> str:
+    run = KidraRunner(z_api_kidra, mode, start_Id)
     run.accumulator = []
     run.start()
     return run.name
+
 
 @app.get("/materials/discipline",
          response_class=PlainTextResponse,

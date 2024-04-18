@@ -5,6 +5,7 @@ from app import edu_sharing_api
 from app.edu_sharing_api.api.collection_v1_api import COLLECTIONV1Api
 from app.edu_sharing_api.api.node_v1_api import NODEV1Api
 from app.edu_sharing_api.api.search_v1_api import SEARCHV1Api
+from app.edu_sharing_api.api.suggestions_v1_api import SUGGESTIONSV1Api
 from app.edu_sharing_api.api_client import ApiClient
 from app.edu_sharing_api.configuration import Configuration
 
@@ -15,6 +16,7 @@ class EduSharingApiHelper:
     edu_sharing_collection_api: COLLECTIONV1Api
     edu_sharing_node_api: NODEV1Api
     edu_sharing_search_api: SEARCHV1Api
+    edu_sharing_suggestion_api: SUGGESTIONSV1Api
     def __init__(self):
         passwd = os.getenv("EDU_SHARING_PASSWORD")
         configuration = Configuration.get_default_copy()
@@ -22,6 +24,7 @@ class EduSharingApiHelper:
         # doesn't work!
         configuration.username = 'admin'
         configuration.password = passwd
+        configuration.client_side_validation = False
         self.edu_sharing_api = edu_sharing_api.ApiClient(
             configuration=configuration,
             header_name='Authorization',
@@ -31,6 +34,7 @@ class EduSharingApiHelper:
         self.edu_sharing_collection_api = edu_sharing_api.COLLECTIONV1Api(self.edu_sharing_api)
         self.edu_sharing_node_api = edu_sharing_api.NODEV1Api(self.edu_sharing_api)
         self.edu_sharing_search_api = edu_sharing_api.SEARCHV1Api(self.edu_sharing_api)
+        self.edu_sharing_suggestion_api = edu_sharing_api.SUGGESTIONSV1Api(self.edu_sharing_api)
 
     async def run_over_materials(self, execute_callback):
         await self.run_over_materials_internal(0, execute_callback)
@@ -43,11 +47,11 @@ class EduSharingApiHelper:
             search_parameters={'criteria': []},
             skip_count=offset,
             property_filter=['-all-'],
-            max_items=100,
+            max_items=5,
         )
         for node in materials.nodes:
             await execute_callback({'node': node})
-        await self.run_over_materials_internal(offset + 100, execute_callback)
+        await self.run_over_materials_internal(offset + 5, execute_callback)
 
     async def run_over_collection_tree(self, start_id: str, execute_callback):
         if  not start_id:

@@ -25,10 +25,11 @@ class PromptRunner (threading.Thread):
     accumulator: list
 
     def getName(self) -> str:
-        return self.prompt
+        return "PromptRunner"
 
     def stop(self):
         self.is_stopped = True
+
     def __init__(self, z_api_text: AITextPromptsApi, prompt: str, mode: RunMode, startId: str, node: Node):
         self.is_stopped = False
         self.z_api_text = z_api_text
