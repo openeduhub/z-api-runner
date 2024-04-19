@@ -13,6 +13,7 @@ from app.z_api import KidraApi
 
 
 class KidraRunner(threading.Thread):
+    minConfidence = 0.7
     is_stopped: bool
     edu_sharing_api: EduSharingApiHelper
     z_api_kidra: KidraApi
@@ -80,7 +81,7 @@ class KidraRunner(threading.Thread):
             }
             data = {
                 'text': text,
-                'num_samples': 500,
+                'num_samples': 2000,
                 'num_predictions': 10,
                 'interval_size': 0.8
             }
@@ -90,11 +91,12 @@ class KidraRunner(threading.Thread):
             suggestions = []
             for k, v in predictions.items():
                 for s in v:
-                    suggestions.append({
-                        'propertyId': k.split('.')[1],
-                        'value': s["id"],
-                        'confidence': s["median_prob"],
-                    })
+                    if s["median_prob"] > self.minConfidence:
+                        suggestions.append({
+                            'propertyId': k.split('.')[1],
+                            'value': s["id"],
+                            'confidence': s["median_prob"],
+                        })
             #
             #self.edu_sharing_api.edu_sharing_suggestion_api.create_suggestions(
             #    repository='-home-',
@@ -107,18 +109,29 @@ class KidraRunner(threading.Thread):
             #        confidence=1,
             #    )]
             #)
-
             url = self.edu_sharing_api.url + '/suggestions/v1/-home-/' + node_id + "?version=" + response["version"]
             headers = {
                 'accept': 'application/json',
                 'Authorization': "Basic %s" % self.edu_sharing_api.auth,
                 'Content-Type': 'application/json'
             }
-            response = requests.post(url, headers=headers, json=suggestions)
+            response_delete = requests.delete(url, headers=headers)
+            logging.info(response_delete.status_code)
+            logging.info(json.dumps(suggestions))
+            if len(suggestions):
+                url = self.edu_sharing_api.url + '/suggestions/v1/-home-/' + node_id + "?version=" + response["version"]
+                headers = {
+                    'accept': 'application/json',
+                    'Authorization': "Basic %s" % self.edu_sharing_api.auth,
+                    'Content-Type': 'application/json'
+                }
+                response = requests.post(url, headers=headers, json=suggestions)
+                logging.info(response.status_code != 200)
+                if response.status_code != 200:
+                    logging.warning(response.text)
+
             logging.info(text)
             logging.info(node_id)
-            logging.info(json.dumps(suggestions))
-            if response.status_code != 200:
-                logging.warning(response.text)
+
         except Exception as e:
-            logging.warning(e)
+            logging.error(e)
