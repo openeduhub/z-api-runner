@@ -1,11 +1,13 @@
 import base64
 import os
 
+import requests
+
 from app import edu_sharing_api
-from app.edu_sharing_api.api.collection_v1_api import COLLECTIONV1Api
-from app.edu_sharing_api.api.node_v1_api import NODEV1Api
-from app.edu_sharing_api.api.search_v1_api import SEARCHV1Api
-from app.edu_sharing_api.api.suggestions_v1_api import SUGGESTIONSV1Api
+from app.edu_sharing_api.api.collectionv1_api import COLLECTIONV1Api
+from app.edu_sharing_api.api.nodev1_api import NODEV1Api
+from app.edu_sharing_api.api.searchv1_api import SEARCHV1Api
+from app.edu_sharing_api.api.suggestionsv1_api import SUGGESTIONSV1Api
 from app.edu_sharing_api.api_client import ApiClient
 from app.edu_sharing_api.configuration import Configuration
 
@@ -17,10 +19,14 @@ class EduSharingApiHelper:
     edu_sharing_node_api: NODEV1Api
     edu_sharing_search_api: SEARCHV1Api
     edu_sharing_suggestion_api: SUGGESTIONSV1Api
+    url: str
+    auth: str
     def __init__(self):
         passwd = os.getenv("EDU_SHARING_PASSWORD")
         configuration = Configuration.get_default_copy()
         configuration.host = os.getenv("EDU_SHARING_URL") + '/rest'
+        self.url = os.getenv("EDU_SHARING_URL") + '/rest'
+        self.auth = base64.b64encode(('admin:' + passwd).encode()).decode(),
         # doesn't work!
         configuration.username = 'admin'
         configuration.password = passwd
@@ -40,16 +46,24 @@ class EduSharingApiHelper:
         await self.run_over_materials_internal(0, execute_callback)
 
     async def run_over_materials_internal(self, offset: int, execute_callback):
-        materials = self.edu_sharing_search_api.search(
-            repository='-home-',
-            query='ngsearch',
-            metadataset='mds_oeh',
-            search_parameters={'criteria': []},
-            skip_count=offset,
-            property_filter=['-all-'],
-            max_items=5,
-        )
-        for node in materials.nodes:
+        # materials = self.edu_sharing_search_api.search(
+        #     repository='-home-',
+        #     query='ngsearch',
+        #     metadataset='mds_oeh',
+        #     search_parameters={'criteria': []},
+        #     skip_count=offset,
+        #     property_filter=['-all-'],
+        #     max_items=5,
+        # )
+        url = self.url + '/search/v1/queries/-home-/mds_oeh/ngsearch?skip_count=%s&maxItems=5&property_filter=-all-' % offset
+        headers = {
+            'accept': 'application/json',
+            'Authentication': "Bearer %s " % self.auth,
+            'Content-Type': 'application/json'
+        }
+        data = {'criteria': []}
+        response = requests.post(url, headers=headers, json=data)
+        for node in response.json()["nodes"]:
             await execute_callback({'node': node})
         await self.run_over_materials_internal(offset + 5, execute_callback)
 
