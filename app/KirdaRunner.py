@@ -59,8 +59,8 @@ class KidraRunner(threading.Thread):
             text = data["collection"]["title"]
         else:
             node_id = data["node"]["ref"]["id"]
-            text = data["node"]["title"]
-        text = "a² + b² = c²"
+            text = data["node"]["title"] + (data["node"]["cclom:general_description"].join('') if "cclom:general_description" in data["node"] else "")
+
         try:
             #body = {"text": text, "reading_speed": 200, "generate_embeddings": False}
             #result = self.z_api_kidra.text_stats_analyze_text_post(body)
@@ -115,6 +115,7 @@ class KidraRunner(threading.Thread):
                 'Content-Type': 'application/json'
             }
             response = requests.post(url, headers=headers, json=suggestions)
+            logging.info(text)
             logging.info(node_id)
             logging.info(json.dumps(suggestions))
             if response.status_code != 200:
