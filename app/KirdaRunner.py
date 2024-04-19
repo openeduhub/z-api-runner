@@ -6,17 +6,14 @@ import threading
 
 import requests
 
-from app.EduSharingApiHelper import EduSharingApiHelper
-from app.RunMode import RunMode
-from app.edu_sharing_api.models.create_suggestion_request_dto import CreateSuggestionRequestDTO
-from app.z_api import KidraApi
+from EduSharingApiHelper import EduSharingApiHelper
+from RunMode import RunMode
 
 
 class KidraRunner(threading.Thread):
     minConfidence = 0.7
     is_stopped: bool
     edu_sharing_api: EduSharingApiHelper
-    z_api_kidra: KidraApi
     mode: RunMode
     startId: str
     accumulator: list
@@ -24,9 +21,8 @@ class KidraRunner(threading.Thread):
     def stop(self):
         self.is_stopped = True
 
-    def __init__(self, z_api_kidra: KidraApi, mode: RunMode, startId: str):
+    def __init__(self, mode: RunMode, startId: str):
         self.is_stopped = False
-        self.z_api_kidra = z_api_kidra
         self.mode = mode
         self.startId = startId
         self.accumulator = []
@@ -60,8 +56,8 @@ class KidraRunner(threading.Thread):
             text = data["collection"]["title"]
         else:
             node_id = data["node"]["ref"]["id"]
-            text = data["node"]["title"] + (data["node"]["cclom:general_description"].join('') if "cclom:general_description" in data["node"] else "")
-
+            text = data["node"]["title"] + (' '.join(data["node"]["properties"]["cclom:general_description"]) if "cclom:general_description" in data["node"]["properties"] else "")
+        print(node_id)
         try:
             #body = {"text": text, "reading_speed": 200, "generate_embeddings": False}
             #result = self.z_api_kidra.text_stats_analyze_text_post(body)
@@ -86,7 +82,6 @@ class KidraRunner(threading.Thread):
                 'interval_size': 0.8
             }
             response = requests.post(url, headers=headers, json=data).json()
-
             predictions = response["predictions"]
             suggestions = []
             for k, v in predictions.items():

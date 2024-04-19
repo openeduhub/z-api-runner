@@ -8,10 +8,10 @@ from io import StringIO
 import requests
 from requests.auth import HTTPBasicAuth
 
-from app.EduSharingApiHelper import EduSharingApiHelper
-from app.edu_sharing_api.models.node import Node
-from app.RunMode import RunMode
-from app.z_api.api.ai_text_prompts_api import AITextPromptsApi
+from EduSharingApiHelper import EduSharingApiHelper
+from edu_sharing_api.models.node import Node
+from RunMode import RunMode
+from z_api.api.ai_text_prompts_api import AITextPromptsApi
 import csv
 
 

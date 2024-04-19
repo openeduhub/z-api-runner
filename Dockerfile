@@ -7,6 +7,10 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 COPY ./app /code/app
 COPY ./generate-api.sh /code/generate-api.sh
 COPY ./generate-z-api.sh /code/generate-z-api.sh
-RUN sh /code/generate-api.sh
-RUN sh /code/generate-z-api.sh
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+RUN sh ./generate-api.sh
+RUN sh ./generate-z-api.sh
+RUN ls -alh && cd app && ls -alh
+RUN ls -alh && cd app/z_api/models && ls -alh
+WORKDIR /code/app
+#CMD ["python", "main.py", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]

@@ -3,13 +3,13 @@ import os
 
 import requests
 
-from app import edu_sharing_api
-from app.edu_sharing_api.api.collectionv1_api import COLLECTIONV1Api
-from app.edu_sharing_api.api.nodev1_api import NODEV1Api
-from app.edu_sharing_api.api.searchv1_api import SEARCHV1Api
-from app.edu_sharing_api.api.suggestionsv1_api import SUGGESTIONSV1Api
-from app.edu_sharing_api.api_client import ApiClient
-from app.edu_sharing_api.configuration import Configuration
+import edu_sharing_api
+from edu_sharing_api.api.collectionv1_api import COLLECTIONV1Api
+from edu_sharing_api.api.nodev1_api import NODEV1Api
+from edu_sharing_api.api.searchv1_api import SEARCHV1Api
+from edu_sharing_api.api.suggestionsv1_api import SUGGESTIONSV1Api
+from edu_sharing_api.api_client import ApiClient
+from edu_sharing_api.configuration import Configuration
 
 
 class EduSharingApiHelper:
@@ -55,7 +55,7 @@ class EduSharingApiHelper:
         #     property_filter=['-all-'],
         #     max_items=5,
         # )
-        url = self.url + '/search/v1/queries/-home-/mds_oeh/ngsearch?skip_count=%s&maxItems=5&property_filter=-all-' % offset
+        url = self.url + '/search/v1/queries/-home-/mds_oeh/ngsearch?skip_count=%s&maxItems=5&propertyFilter=-all-' % offset
         headers = {
             'accept': 'application/json',
             'Authentication': "Bearer %s " % self.auth,

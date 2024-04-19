@@ -16,12 +16,12 @@ from gql.transport.aiohttp import AIOHTTPTransport
 from starlette.responses import JSONResponse
 
 import z_api
-from app.EduSharingApiHelper import EduSharingApiHelper
-from app.KirdaRunner import KidraRunner
-from app.OpenAi import OpenAi
-from app.PromptRunner import PromptRunner
-from app.RunMode import RunMode
-from app.valuespace_converter.app.valuespaces import Valuespaces
+from KirdaRunner import KidraRunner
+from OpenAi import OpenAi
+from PromptRunner import PromptRunner
+from RunMode import RunMode
+from EduSharingApiHelper import EduSharingApiHelper
+from valuespace_converter.app.valuespaces import Valuespaces
 
 logging.root.setLevel(logging.INFO)
 logging.info("Startup")
@@ -228,7 +228,7 @@ async def run_kidra_suggestions(
         mode: RunMode,
         start_Id: str = Query(default = None, description="Start Id (nur Sammlungen), wenn nicht gesetzt wird der gesamte Baum verwendet"),
 ) -> str:
-    run = KidraRunner(z_api_kidra, mode, start_Id)
+    run = KidraRunner(mode, start_Id)
     run.accumulator = []
     run.start()
     return run.name
