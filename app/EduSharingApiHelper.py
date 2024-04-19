@@ -55,7 +55,7 @@ class EduSharingApiHelper:
         #     property_filter=['-all-'],
         #     max_items=5,
         # )
-        url = self.url + '/search/v1/queries/-home-/mds_oeh/ngsearch?skip_count=%s&maxItems=5&propertyFilter=-all-' % offset
+        url = self.url + '/search/v1/queries/-home-/mds_oeh/ngsearch?skip_count=%s&maxItems=25&propertyFilter=-all-' % offset
         headers = {
             'accept': 'application/json',
             'Authentication': "Bearer %s " % self.auth,
@@ -65,7 +65,7 @@ class EduSharingApiHelper:
         response = requests.post(url, headers=headers, json=data)
         for node in response.json()["nodes"]:
             await execute_callback({'node': node})
-        await self.run_over_materials_internal(offset + 5, execute_callback)
+        await self.run_over_materials_internal(offset + 25, execute_callback)
 
     async def run_over_collection_tree(self, start_id: str, execute_callback):
         if  not start_id:
